@@ -3,16 +3,20 @@ import { Navbar, type CurrentView } from './components/layout/Navbar';
 import { HomeView } from './views/HomeView';
 import { ProductCard } from './components/common/ProductCard';
 import { ProductDetailView } from './views/ProductDetailView';
+import { AboutView } from './views/AboutView';
+import { BlogsView } from './views/BlogsView';
 import { CartView } from './views/CartView';
 import { CheckoutView, type OrderData } from './views/CheckoutView';
 import { PaymentSuccessView } from './views/PaymentSuccessView';
 import { PaymentErrorView } from './views/PaymentErrorView';
 import { ContactView } from './views/ContactView';
 import { LoginView } from './views/LoginView';
+import { ProfileView } from './views/ProfileView';
 import { AdminView } from './views/AdminView';
 import { productService, type Product, type CartItem } from './data/productService';
 
 const CART_STORAGE_KEY = 'PASTELERIA_MIL_SABORES_CART';
+const ORDERS_STORAGE_KEY = 'PASTELERIA_MIL_SABORES_ORDERS';
 
 export function App() {
   const [currentView, setCurrentView] = useState<CurrentView>('home');
@@ -21,6 +25,10 @@ export function App() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem(CART_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [orders, setOrders] = useState<OrderData[]>(() => {
+    const saved = localStorage.getItem(ORDERS_STORAGE_KEY);
     return saved ? JSON.parse(saved) : [];
   });
   const [appliedDiscount, setAppliedDiscount] = useState<number>(0);
@@ -40,6 +48,24 @@ export function App() {
   useEffect(() => {
     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
   }, [cart]);
+
+  useEffect(() => {
+    localStorage.setItem(ORDERS_STORAGE_KEY, JSON.stringify(orders));
+  }, [orders]);
+
+  const isAdmin = userEmail === 'admin@pasteleria.cl' || (userEmail?.startsWith('admin') ?? false);
+
+  const handleNavigate = (view: CurrentView) => {
+    if (view === 'admin' && !isAdmin) {
+      setCurrentView('login');
+      return;
+    }
+    if (view === 'checkout' && !userEmail) {
+      setCurrentView('login');
+      return;
+    }
+    setCurrentView(view);
+  };
 
   const categories = ['Todas', ...Array.from(new Set(products.map((p) => p.categoria)))];
 
@@ -90,11 +116,16 @@ export function App() {
 
   const handleProceedToCheckout = (discount: number) => {
     setAppliedDiscount(discount);
-    setCurrentView('checkout');
+    if (!userEmail) {
+      setCurrentView('login');
+    } else {
+      setCurrentView('checkout');
+    }
   };
 
   const handlePaymentSuccess = (order: OrderData) => {
     setLatestOrder(order);
+    setOrders((prev) => [order, ...prev]);
     setCart([]);
     setCurrentView('payment-success');
   };
@@ -103,25 +134,38 @@ export function App() {
     setCurrentView('payment-error');
   };
 
+  const handleUpdateOrderStatus = (orderNumber: string, newStatus: string) => {
+    setOrders((prev) =>
+      prev.map((o) => (o.orderNumber === orderNumber ? { ...o, estado: newStatus } : o))
+    );
+  };
+
   const handleLoginSuccess = (email: string) => {
     setUserEmail(email);
-    setCurrentView('home');
+    if (email === 'admin@pasteleria.cl' || email.startsWith('admin')) {
+      setCurrentView('admin');
+    } else {
+      setCurrentView('catalog');
+    }
   };
 
   const handleLogout = () => {
     localStorage.removeItem('pasteleria_user');
     setUserEmail(null);
+    setCurrentView('home');
   };
 
   const totalCartUnits = cart.reduce((acc, item) => acc + item.cantidad, 0);
+  const userOrders = orders.filter((o) => o.correo === userEmail);
 
   return (
     <div className="d-flex flex-column min-vh-100">
       <Navbar
         currentView={currentView}
-        onNavigate={setCurrentView}
+        onNavigate={handleNavigate}
         cartCount={totalCartUnits}
         userEmail={userEmail}
+        isAdmin={isAdmin}
         onLogout={handleLogout}
       />
 
@@ -138,8 +182,10 @@ export function App() {
           <div className="my-4">
             <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
               <div>
-                <h2 className="fw-bold mb-1">Catálogo de Pastelería</h2>
-                <p className="text-muted small mb-0">Selecciona tu categoría preferida</p>
+                <h2 className="mb-1" style={{ fontSize: '2rem' }}>Catálogo de Productos</h2>
+                <p className="small mb-0" style={{ color: 'var(--color-texto-principal)' }}>
+                  Selecciona tu categoría preferida
+                </p>
               </div>
               <div className="d-flex gap-2 flex-wrap">
                 {categories.map((cat) => (
@@ -190,6 +236,10 @@ export function App() {
           />
         )}
 
+        {currentView === 'about' && <AboutView />}
+
+        {currentView === 'blogs' && <BlogsView />}
+
         {currentView === 'cart' && (
           <CartView
             cart={cart}
@@ -234,20 +284,31 @@ export function App() {
           />
         )}
 
-        {currentView === 'admin' && (
+        {currentView === 'profile' && userEmail && (
+          <ProfileView
+            userEmail={userEmail}
+            userOrders={userOrders}
+            onGoToStore={() => setCurrentView('catalog')}
+            onLogout={handleLogout}
+          />
+        )}
+
+        {currentView === 'admin' && isAdmin && (
           <AdminView
             products={products}
+            orders={orders}
+            onUpdateOrderStatus={handleUpdateOrderStatus}
             onRefresh={reloadProducts}
             onBackToStore={() => setCurrentView('catalog')}
           />
         )}
       </main>
 
-      <footer className="py-4 mt-5 text-white" style={{ backgroundColor: 'var(--color-chocolate)' }}>
+      <footer className="py-4 mt-5 border-top" style={{ backgroundColor: 'var(--color-chocolate)', color: 'white' }}>
         <div className="container text-center small">
-          <p className="mb-1">Pastelería Mil Sabores - 50 Años de Tradición Repostera</p>
+          <p className="mb-1 fw-bold">Pastelería Mil Sabores - 50 Años de Tradición Repostera</p>
           <p className="mb-0 text-white-50">
-            Santiago de Chile | Evaluaciones Web Duoc UC
+            &copy; 2026 Pastelería Mil Sabores. Todos los derechos reservados.
           </p>
         </div>
       </footer>

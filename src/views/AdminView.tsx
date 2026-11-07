@@ -1,8 +1,20 @@
 import React, { useState } from 'react';
 import { productService, type Product } from '../data/productService';
+import type { OrderData } from './CheckoutView';
+
+export interface ContactMessage {
+  id: string;
+  nombre: string;
+  correo: string;
+  asunto: string;
+  mensaje: string;
+  fecha: string;
+}
 
 interface AdminViewProps {
   products: Product[];
+  orders: OrderData[];
+  onUpdateOrderStatus: (orderNumber: string, status: string) => void;
   onRefresh: () => void;
   onBackToStore: () => void;
 }
@@ -31,9 +43,12 @@ interface FormState {
 
 export const AdminView: React.FC<AdminViewProps> = ({
   products,
+  orders,
+  onUpdateOrderStatus,
   onRefresh,
   onBackToStore,
 }) => {
+  const [activeTab, setActiveTab] = useState<'inventory' | 'orders' | 'messages' | 'alerts'>('inventory');
   const [isEditing, setIsEditing] = useState(false);
   const [editingCodigo, setEditingCodigo] = useState<string | null>(null);
 
@@ -51,6 +66,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
+  const [contactMessages] = useState<ContactMessage[]>(() => {
+    const saved = localStorage.getItem('PASTELERIA_CONTACT_MSGS');
+    return saved ? JSON.parse(saved) : [];
+  });
+
+  const criticalStockProducts = products.filter(
+    (p) => p.stock <= (p.stockCritico ?? 2)
+  );
+
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -64,13 +88,8 @@ export const AdminView: React.FC<AdminViewProps> = ({
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
 
-    if (!formData.codigo.trim()) {
-      newErrors.codigo = 'El código es requerido.';
-    }
-
-    if (!formData.nombre.trim()) {
-      newErrors.nombre = 'El nombre es requerido.';
-    }
+    if (!formData.codigo.trim()) newErrors.codigo = 'El código es requerido.';
+    if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es requerido.';
 
     const precioNum = Number(formData.precio);
     if (!formData.precio || isNaN(precioNum) || precioNum <= 0) {
@@ -184,15 +203,15 @@ export const AdminView: React.FC<AdminViewProps> = ({
     <div className="my-4">
       <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
         <div>
-          <h2 className="fw-bold mb-1">Panel de Administración</h2>
-          <p className="text-muted small mb-0">Gestión de inventario y catálogo de pastelería</p>
+          <h2 className="fw-bold mb-1">Módulo de Administración</h2>
+          <p className="text-muted small mb-0">Panel de control de operaciones y catálogo de Mil Sabores</p>
         </div>
         <div className="d-flex gap-2">
           <button className="btn btn-outline-danger btn-sm" onClick={handleResetCatalog}>
             <i className="bi bi-arrow-counterclockwise me-1"></i> Restaurar Catálogo
           </button>
           <button className="btn btn-outline-secondary btn-sm" onClick={onBackToStore}>
-            <i className="bi bi-arrow-left me-1"></i> Volver a la Tienda
+            <i className="bi bi-shop me-1"></i> Volver a la Tienda
           </button>
         </div>
       </div>
@@ -208,209 +227,393 @@ export const AdminView: React.FC<AdminViewProps> = ({
         </div>
       )}
 
-      <div className="row g-4">
-        <div className="col-lg-4">
-          <div className="card shadow-sm border-0 p-4">
-            <h5 className="fw-bold mb-3">
-              {isEditing ? `Editar Producto (${editingCodigo})` : 'Nuevo Producto'}
-            </h5>
+      <ul className="nav nav-pills mb-4 border-bottom pb-3">
+        <li className="nav-item">
+          <button
+            className={`nav-link btn-sm ${activeTab === 'inventory' ? 'active' : ''}`}
+            onClick={() => setActiveTab('inventory')}
+          >
+            <i className="bi bi-box-seam me-1"></i> Gestión de Inventario ({products.length})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link btn-sm ${activeTab === 'orders' ? 'active' : ''}`}
+            onClick={() => setActiveTab('orders')}
+          >
+            <i className="bi bi-receipt me-1"></i> Gestión de Pedidos ({orders.length})
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link btn-sm position-relative ${activeTab === 'alerts' ? 'active' : ''}`}
+            onClick={() => setActiveTab('alerts')}
+          >
+            <i className="bi bi-exclamation-triangle me-1"></i> Stock Crítico
+            {criticalStockProducts.length > 0 && (
+              <span className="badge bg-danger ms-2">{criticalStockProducts.length}</span>
+            )}
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link btn-sm ${activeTab === 'messages' ? 'active' : ''}`}
+            onClick={() => setActiveTab('messages')}
+          >
+            <i className="bi bi-envelope me-1"></i> Mensajes Recibidos ({contactMessages.length})
+          </button>
+        </li>
+      </ul>
 
-            <form onSubmit={handleSubmit} noValidate>
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">Código Alfanumérico *</label>
-                <input
-                  type="text"
-                  name="codigo"
-                  placeholder="Ej: TC003"
-                  className={`form-control form-control-sm text-uppercase ${errors.codigo ? 'is-invalid' : ''}`}
-                  value={formData.codigo}
-                  onChange={handleChange}
-                  disabled={isEditing}
-                />
-                {errors.codigo && <div className="invalid-feedback">{errors.codigo}</div>}
-              </div>
+      {activeTab === 'inventory' && (
+        <div className="row g-4">
+          <div className="col-lg-4">
+            <div className="card shadow-sm border-0 p-4">
+              <h5 className="fw-bold mb-3">
+                {isEditing ? `Editar Producto (${editingCodigo})` : 'Nuevo Producto'}
+              </h5>
 
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">Nombre del Pastel *</label>
-                <input
-                  type="text"
-                  name="nombre"
-                  placeholder="Nombre representativo"
-                  className={`form-control form-control-sm ${errors.nombre ? 'is-invalid' : ''}`}
-                  value={formData.nombre}
-                  onChange={handleChange}
-                />
-                {errors.nombre && <div className="invalid-feedback">{errors.nombre}</div>}
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">Categoría *</label>
-                <select
-                  name="categoria"
-                  className="form-select form-select-sm"
-                  value={formData.categoria}
-                  onChange={handleChange}
-                >
-                  {CATEGORIAS.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="row g-2 mb-3">
-                <div className="col-6">
-                  <label className="form-label small fw-semibold">Precio ($CLP) *</label>
+              <form onSubmit={handleSubmit} noValidate>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Código Alfanumérico *</label>
                   <input
-                    type="number"
-                    name="precio"
-                    min="1"
-                    className={`form-control form-control-sm ${errors.precio ? 'is-invalid' : ''}`}
-                    value={formData.precio}
+                    type="text"
+                    name="codigo"
+                    placeholder="Ej: TC003"
+                    className={`form-control form-control-sm text-uppercase ${errors.codigo ? 'is-invalid' : ''}`}
+                    value={formData.codigo}
                     onChange={handleChange}
+                    disabled={isEditing}
                   />
-                  {errors.precio && <div className="invalid-feedback">{errors.precio}</div>}
+                  {errors.codigo && <div className="invalid-feedback">{errors.codigo}</div>}
                 </div>
 
-                <div className="col-6">
-                  <label className="form-label small fw-semibold">Stock Actual *</label>
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Nombre del Pastel *</label>
                   <input
-                    type="number"
-                    name="stock"
-                    min="0"
-                    className={`form-control form-control-sm ${errors.stock ? 'is-invalid' : ''}`}
-                    value={formData.stock}
+                    type="text"
+                    name="nombre"
+                    placeholder="Nombre representativo"
+                    className={`form-control form-control-sm ${errors.nombre ? 'is-invalid' : ''}`}
+                    value={formData.nombre}
                     onChange={handleChange}
                   />
-                  {errors.stock && <div className="invalid-feedback">{errors.stock}</div>}
+                  {errors.nombre && <div className="invalid-feedback">{errors.nombre}</div>}
                 </div>
-              </div>
 
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">Stock Crítico</label>
-                <input
-                  type="number"
-                  name="stockCritico"
-                  min="1"
-                  className="form-control form-control-sm"
-                  value={formData.stockCritico}
-                  onChange={handleChange}
-                />
-              </div>
-
-              <div className="mb-3">
-                <label className="form-label small fw-semibold">URL de la Imagen *</label>
-                <input
-                  type="url"
-                  name="imagen"
-                  placeholder="https://..."
-                  className={`form-control form-control-sm ${errors.imagen ? 'is-invalid' : ''}`}
-                  value={formData.imagen}
-                  onChange={handleChange}
-                />
-                {errors.imagen && <div className="invalid-feedback">{errors.imagen}</div>}
-              </div>
-
-              <div className="mb-4">
-                <label className="form-label small fw-semibold">Descripción</label>
-                <textarea
-                  name="descripcion"
-                  rows={3}
-                  className="form-control form-control-sm"
-                  placeholder="Detalle de ingredientes o elaboración..."
-                  value={formData.descripcion}
-                  onChange={handleChange}
-                ></textarea>
-              </div>
-
-              <div className="d-flex gap-2">
-                <button type="submit" className="btn btn-custom w-100 py-2 fw-bold">
-                  {isEditing ? 'Guardar Cambios' : 'Registrar Producto'}
-                </button>
-                {isEditing && (
-                  <button
-                    type="button"
-                    className="btn btn-outline-secondary btn-sm"
-                    onClick={handleStartCreate}
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Categoría *</label>
+                  <select
+                    name="categoria"
+                    className="form-select form-select-sm"
+                    value={formData.categoria}
+                    onChange={handleChange}
                   >
-                    Cancelar
-                  </button>
-                )}
-              </div>
-            </form>
-          </div>
-        </div>
+                    {CATEGORIAS.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-        <div className="col-lg-8">
-          <div className="card shadow-sm border-0">
-            <div className="table-responsive">
-              <table className="table align-middle mb-0">
-                <thead className="table-light">
-                  <tr>
-                    <th scope="col">Código</th>
-                    <th scope="col">Producto</th>
-                    <th scope="col">Categoría</th>
-                    <th scope="col">Precio</th>
-                    <th scope="col">Stock</th>
-                    <th scope="col" className="text-end">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((p) => {
-                    const isLowStock = p.stock <= (p.stockCritico ?? 2);
-                    return (
-                      <tr key={p.codigo}>
-                        <td className="fw-bold">{p.codigo}</td>
-                        <td>
-                          <div className="d-flex align-items-center">
-                            <img
-                              src={p.imagen}
-                              alt={p.nombre}
-                              className="rounded me-2"
-                              style={{ width: '40px', height: '40px', objectFit: 'cover' }}
-                            />
-                            <span className="small fw-semibold">{p.nombre}</span>
-                          </div>
-                        </td>
-                        <td>
-                          <span className="badge bg-secondary-subtle text-dark small">
-                            {p.categoria}
-                          </span>
-                        </td>
-                        <td className="fw-bold text-price">${p.precio.toLocaleString('es-CL')}</td>
-                        <td>
-                          <span className={`badge ${isLowStock ? 'bg-danger' : 'bg-success'}`}>
-                            {p.stock} unid.
-                          </span>
-                        </td>
-                        <td className="text-end">
-                          <button
-                            type="button"
-                            className="btn btn-outline-secondary btn-sm me-1"
-                            onClick={() => handleStartEdit(p)}
-                            title="Editar"
-                          >
-                            <i className="bi bi-pencil"></i>
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-outline-danger btn-sm"
-                            onClick={() => handleDelete(p.codigo)}
-                            title="Eliminar"
-                          >
-                            <i className="bi bi-trash"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                <div className="row g-2 mb-3">
+                  <div className="col-6">
+                    <label className="form-label small fw-semibold">Precio ($CLP) *</label>
+                    <input
+                      type="number"
+                      name="precio"
+                      min="1"
+                      className={`form-control form-control-sm ${errors.precio ? 'is-invalid' : ''}`}
+                      value={formData.precio}
+                      onChange={handleChange}
+                    />
+                    {errors.precio && <div className="invalid-feedback">{errors.precio}</div>}
+                  </div>
+
+                  <div className="col-6">
+                    <label className="form-label small fw-semibold">Stock Actual *</label>
+                    <input
+                      type="number"
+                      name="stock"
+                      min="0"
+                      className={`form-control form-control-sm ${errors.stock ? 'is-invalid' : ''}`}
+                      value={formData.stock}
+                      onChange={handleChange}
+                    />
+                    {errors.stock && <div className="invalid-feedback">{errors.stock}</div>}
+                  </div>
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">Stock Crítico</label>
+                  <input
+                    type="number"
+                    name="stockCritico"
+                    min="1"
+                    className="form-control form-control-sm"
+                    value={formData.stockCritico}
+                    onChange={handleChange}
+                  />
+                </div>
+
+                <div className="mb-3">
+                  <label className="form-label small fw-semibold">URL de la Imagen *</label>
+                  <input
+                    type="url"
+                    name="imagen"
+                    placeholder="https://..."
+                    className={`form-control form-control-sm ${errors.imagen ? 'is-invalid' : ''}`}
+                    value={formData.imagen}
+                    onChange={handleChange}
+                  />
+                  {errors.imagen && <div className="invalid-feedback">{errors.imagen}</div>}
+                </div>
+
+                <div className="mb-4">
+                  <label className="form-label small fw-semibold">Descripción</label>
+                  <textarea
+                    name="descripcion"
+                    rows={3}
+                    className="form-control form-control-sm"
+                    placeholder="Detalle de ingredientes..."
+                    value={formData.descripcion}
+                    onChange={handleChange}
+                  ></textarea>
+                </div>
+
+                <div className="d-flex gap-2">
+                  <button type="submit" className="btn btn-custom w-100 py-2 fw-bold">
+                    {isEditing ? 'Guardar Cambios' : 'Registrar Producto'}
+                  </button>
+                  {isEditing && (
+                    <button
+                      type="button"
+                      className="btn btn-outline-secondary btn-sm"
+                      onClick={handleStartCreate}
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div className="col-lg-8">
+            <div className="card shadow-sm border-0">
+              <div className="table-responsive">
+                <table className="table align-middle mb-0">
+                  <thead className="table-light">
+                    <tr>
+                      <th scope="col">Código</th>
+                      <th scope="col">Producto</th>
+                      <th scope="col">Categoría</th>
+                      <th scope="col">Precio</th>
+                      <th scope="col">Stock</th>
+                      <th scope="col" className="text-end">Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map((p) => {
+                      const isLowStock = p.stock <= (p.stockCritico ?? 2);
+                      return (
+                        <tr key={p.codigo}>
+                          <td className="fw-bold">{p.codigo}</td>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <img
+                                src={p.imagen}
+                                alt={p.nombre}
+                                className="rounded me-2"
+                                style={{ width: '40px', height: '40px', objectFit: 'cover' }}
+                              />
+                              <span className="small fw-semibold">{p.nombre}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <span className="badge bg-secondary-subtle text-dark small">
+                              {p.categoria}
+                            </span>
+                          </td>
+                          <td className="fw-bold text-price">${p.precio.toLocaleString('es-CL')}</td>
+                          <td>
+                            <span className={`badge ${isLowStock ? 'bg-danger' : 'bg-success'}`}>
+                              {p.stock} unid.
+                            </span>
+                          </td>
+                          <td className="text-end">
+                            <button
+                              type="button"
+                              className="btn btn-outline-secondary btn-sm me-1"
+                              onClick={() => handleStartEdit(p)}
+                              title="Editar"
+                            >
+                              <i className="bi bi-pencil"></i>
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-outline-danger btn-sm"
+                              onClick={() => handleDelete(p.codigo)}
+                              title="Eliminar"
+                            >
+                              <i className="bi bi-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
+
+      {activeTab === 'orders' && (
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4">
+            <h5 className="fw-bold mb-3">Listado Oficial de Pedidos Recibidos</h5>
+            {orders.length === 0 ? (
+              <p className="text-muted small">No hay órdenes registradas en el sistema.</p>
+            ) : (
+              <div className="table-responsive">
+                <table className="table align-middle table-hover">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Orden #</th>
+                      <th>Cliente</th>
+                      <th>Contacto</th>
+                      <th>Comuna / Región</th>
+                      <th>Total</th>
+                      <th>Productos</th>
+                      <th>Estado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {orders.map((o) => (
+                      <tr key={o.orderNumber}>
+                        <td className="fw-bold">{o.orderNumber}</td>
+                        <td>{o.nombre} {o.apellidos}</td>
+                        <td className="small">{o.correo}</td>
+                        <td className="small">{o.comuna}, {o.region}</td>
+                        <td className="fw-bold text-price">${o.total.toLocaleString('es-CL')}</td>
+                        <td>
+                          <span className="badge bg-light text-dark border">
+                            {o.items.reduce((acc, i) => acc + i.cantidad, 0)} unidades
+                          </span>
+                        </td>
+                        <td>
+                          <select
+                            className="form-select form-select-sm"
+                            value={(o as any).estado || 'Pendiente'}
+                            onChange={(e) => onUpdateOrderStatus(o.orderNumber, e.target.value)}
+                          >
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Preparación">En Preparación</option>
+                            <option value="Enviado">Enviado</option>
+                            <option value="Entregado">Entregado</option>
+                          </select>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'alerts' && (
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4">
+            <h5 className="fw-bold text-danger mb-2">
+              <i className="bi bi-exclamation-triangle-fill me-2"></i>
+              Productos con Stock Crítico o Agotados
+            </h5>
+            <p className="text-muted small mb-4">
+              Artículos cuyo inventario actual está igual o por debajo de su umbral crítico configurado.
+            </p>
+
+            {criticalStockProducts.length === 0 ? (
+              <div className="alert alert-success">
+                Todos los productos cuentan con inventario saludable por encima del umbral crítico.
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Código</th>
+                      <th>Producto</th>
+                      <th>Stock Actual</th>
+                      <th>Stock Crítico</th>
+                      <th>Estado</th>
+                      <th>Acción</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {criticalStockProducts.map((p) => (
+                      <tr key={p.codigo}>
+                        <td className="fw-bold">{p.codigo}</td>
+                        <td>{p.nombre}</td>
+                        <td className="fw-bold text-danger">{p.stock}</td>
+                        <td>{p.stockCritico ?? 2}</td>
+                        <td>
+                          {p.stock === 0 ? (
+                            <span className="badge bg-danger">Agotado</span>
+                          ) : (
+                            <span className="badge bg-warning text-dark">Stock Bajo</span>
+                          )}
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-outline-secondary btn-sm"
+                            onClick={() => {
+                              setActiveTab('inventory');
+                              handleStartEdit(p);
+                            }}
+                          >
+                            Reabastecer
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'messages' && (
+        <div className="card shadow-sm border-0">
+          <div className="card-body p-4">
+            <h5 className="fw-bold mb-3">Mensajes Recibidos desde Formulario de Contacto</h5>
+            {contactMessages.length === 0 ? (
+              <p className="text-muted small">No se han registrado mensajes de clientes aún.</p>
+            ) : (
+              <div className="list-group">
+                {contactMessages.map((msg) => (
+                  <div key={msg.id} className="list-group-item list-group-item-action flex-column align-items-start p-3">
+                    <div className="d-flex w-100 justify-content-between mb-1">
+                      <h6 className="mb-1 fw-bold">{msg.asunto}</h6>
+                      <small className="text-muted">{msg.fecha}</small>
+                    </div>
+                    <p className="mb-1 small">{msg.mensaje}</p>
+                    <small className="text-muted">
+                      De: <strong>{msg.nombre}</strong> ({msg.correo})
+                    </small>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

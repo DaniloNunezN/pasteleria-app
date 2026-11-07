@@ -13,6 +13,7 @@ export interface OrderData {
   items: CartItem[];
   total: number;
   orderNumber: string;
+  estado?: string;
 }
 
 interface CheckoutViewProps {
@@ -123,6 +124,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           items: cart,
           total: totalConDescuento,
           orderNumber,
+          estado: 'Pendiente',
         });
       }
     }, 800);

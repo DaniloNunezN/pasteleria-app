@@ -41,6 +41,15 @@ export const ContactView: React.FC = () => {
     e.preventDefault();
     if (!validate()) return;
 
+    const saved = localStorage.getItem('PASTELERIA_CONTACT_MSGS');
+    const existing = saved ? JSON.parse(saved) : [];
+    const newMessage = {
+      id: Date.now().toString(),
+      ...formData,
+      fecha: new Date().toLocaleDateString('es-CL'),
+    };
+    localStorage.setItem('PASTELERIA_CONTACT_MSGS', JSON.stringify([newMessage, ...existing]));
+
     setSentSuccess(true);
     setFormData({
       nombre: '',
