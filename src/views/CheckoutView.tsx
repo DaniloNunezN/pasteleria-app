@@ -1,32 +1,42 @@
 import React, { useState } from 'react';
 import type { CartItem } from '../data/productService';
 
-interface CheckoutViewProps {
-  cart: CartItem[];
-  onBackToCart: () => void;
-  onPaymentSuccess: (orderData: OrderData) => void;
-  onPaymentError: () => void;
-}
-
 export interface OrderData {
   nombre: string;
   apellidos: string;
   correo: string;
   calle: string;
-  depto: string;
+  depto?: string;
   region: string;
   comuna: string;
-  indicaciones: string;
+  indicaciones?: string;
   items: CartItem[];
   total: number;
   orderNumber: string;
 }
 
+interface CheckoutViewProps {
+  cart: CartItem[];
+  discountPercent?: number;
+  onBackToCart: () => void;
+  onPaymentSuccess: (order: OrderData) => void;
+  onPaymentError: () => void;
+  initialErrors?: Record<string, string>;
+}
+
+const REGIONES_Y_COMUNAS: Record<string, string[]> = {
+  'Región Metropolitana': ['Santiago', 'Providencia', 'Las Condes', 'Ñuñoa', 'San Bernardo', 'Maipú'],
+  'Región de Valparaíso': ['Valparaíso', 'Viña del Mar', 'Quilpué', 'Villa Alemana', 'Concón'],
+  'Región del Biobío': ['Concepción', 'Talcahuano', 'San Pedro de la Paz', 'Chiguayante'],
+};
+
 export const CheckoutView: React.FC<CheckoutViewProps> = ({
   cart,
+  discountPercent = 0,
   onBackToCart,
   onPaymentSuccess,
   onPaymentError,
+  initialErrors = {},
 }) => {
   const [formData, setFormData] = useState({
     nombre: '',
@@ -34,14 +44,27 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     correo: '',
     calle: '',
     depto: '',
-    region: 'Región Metropolitana de Santiago',
+    region: 'Región Metropolitana',
     comuna: 'Santiago',
     indicaciones: '',
   });
 
-  const [errorMsg, setErrorMsg] = useState('');
+  const [errors, setErrors] = useState<Record<string, string>>(initialErrors);
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const total = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+  const subtotal = cart.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
+  const discountAmount = Math.round(subtotal * (discountPercent / 100));
+  const totalConDescuento = subtotal - discountAmount;
+
+  const handleRegionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nuevaRegion = e.target.value;
+    const primeraComuna = REGIONES_Y_COMUNAS[nuevaRegion]?.[0] || '';
+    setFormData({
+      ...formData,
+      region: nuevaRegion,
+      comuna: primeraComuna,
+    });
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -52,65 +75,85 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
     });
   };
 
+  const validate = (): boolean => {
+    const newErrors: Record<string, string> = {};
+
+    if (!formData.nombre.trim()) {
+      newErrors.nombre = 'El nombre es requerido.';
+    } else if (formData.nombre.length > 50) {
+      newErrors.nombre = 'Máximo 50 caracteres.';
+    }
+
+    if (!formData.apellidos.trim()) {
+      newErrors.apellidos = 'Los apellidos son requeridos.';
+    } else if (formData.apellidos.length > 100) {
+      newErrors.apellidos = 'Máximo 100 caracteres.';
+    }
+
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@(duoc\.cl|profesor\.duoc\.cl|gmail\.com)$/;
+    if (!formData.correo.trim()) {
+      newErrors.correo = 'El correo es requerido.';
+    } else if (!emailRegex.test(formData.correo.trim())) {
+      newErrors.correo = 'Solo correos @duoc.cl, @profesor.duoc.cl o @gmail.com.';
+    }
+
+    if (!formData.calle.trim()) {
+      newErrors.calle = 'La dirección / calle es requerida.';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.nombre || !formData.apellidos || !formData.correo || !formData.calle) {
-      setErrorMsg('Por favor completa todos los campos obligatorios (*).');
-      return;
-    }
+    if (!validate()) return;
 
-    const orderNumber = Math.floor(100000 + Math.random() * 900000).toString();
+    setIsProcessing(true);
 
-    const order: OrderData = {
-      ...formData,
-      items: cart,
-      total,
-      orderNumber,
-    };
-
-    if (formData.correo.toLowerCase().includes('error')) {
-      onPaymentError();
-    } else {
-      onPaymentSuccess(order);
-    }
+    setTimeout(() => {
+      setIsProcessing(false);
+      if (formData.nombre.toLowerCase().includes('error')) {
+        onPaymentError();
+      } else {
+        const orderNumber = Math.floor(100000 + Math.random() * 900000).toString();
+        onPaymentSuccess({
+          ...formData,
+          items: cart,
+          total: totalConDescuento,
+          orderNumber,
+        });
+      }
+    }, 800);
   };
 
   return (
     <div className="my-4">
-      <div className="d-flex align-items-center mb-4">
-        <button className="btn btn-outline-secondary me-3" onClick={onBackToCart}>
-          <i className="bi bi-arrow-left"></i>
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="fw-bold mb-0">Finalizar Compra</h2>
+        <button className="btn btn-outline-secondary btn-sm" onClick={onBackToCart}>
+          <i className="bi bi-arrow-left me-1"></i> Volver al Carrito
         </button>
-        <h2 className="fw-bold mb-0" style={{ color: 'var(--dark-color)' }}>
-          Finalizar Compra
-        </h2>
       </div>
 
       <div className="row g-4">
         <div className="col-lg-7">
           <div className="card shadow-sm border-0 p-4">
-            <h4 className="fw-bold mb-3" style={{ color: 'var(--dark-color)' }}>
-              1. Información del Cliente
-            </h4>
+            <h5 className="fw-bold mb-3">Datos de Envío y Contacto</h5>
 
-            {errorMsg && (
-              <div className="alert alert-danger py-2 small" role="alert">
-                {errorMsg}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="row g-3">
+            <form onSubmit={handleSubmit} noValidate>
+              <div className="row g-3 mb-3">
                 <div className="col-sm-6">
                   <label className="form-label small fw-semibold">Nombre *</label>
                   <input
                     type="text"
                     name="nombre"
-                    className="form-control"
+                    className={`form-control form-control-sm ${errors.nombre ? 'is-invalid' : ''}`}
                     value={formData.nombre}
                     onChange={handleChange}
                   />
+                  {errors.nombre && <div className="invalid-feedback">{errors.nombre}</div>}
                 </div>
 
                 <div className="col-sm-6">
@@ -118,38 +161,76 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   <input
                     type="text"
                     name="apellidos"
-                    className="form-control"
+                    className={`form-control form-control-sm ${errors.apellidos ? 'is-invalid' : ''}`}
                     value={formData.apellidos}
                     onChange={handleChange}
                   />
+                  {errors.apellidos && <div className="invalid-feedback">{errors.apellidos}</div>}
+                </div>
+              </div>
+
+              <div className="mb-3">
+                <label className="form-label small fw-semibold">Correo Electrónico *</label>
+                <input
+                  type="email"
+                  name="correo"
+                  placeholder="ejemplo@duoc.cl o @gmail.com"
+                  className={`form-control form-control-sm ${errors.correo ? 'is-invalid' : ''}`}
+                  value={formData.correo}
+                  onChange={handleChange}
+                />
+                {errors.correo && <div className="invalid-feedback">{errors.correo}</div>}
+                <div className="form-text small">
+                  Permitidos: @duoc.cl, @profesor.duoc.cl y @gmail.com
+                </div>
+              </div>
+
+              <div className="row g-3 mb-3">
+                <div className="col-sm-6">
+                  <label className="form-label small fw-semibold">Región *</label>
+                  <select
+                    name="region"
+                    className="form-select form-select-sm"
+                    value={formData.region}
+                    onChange={handleRegionChange}
+                  >
+                    {Object.keys(REGIONES_Y_COMUNAS).map((reg) => (
+                      <option key={reg} value={reg}>
+                        {reg}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                <div className="col-12">
-                  <label className="form-label small fw-semibold">Correo Electrónico *</label>
-                  <input
-                    type="email"
-                    name="correo"
-                    className="form-control"
-                    value={formData.correo}
+                <div className="col-sm-6">
+                  <label className="form-label small fw-semibold">Comuna *</label>
+                  <select
+                    name="comuna"
+                    className="form-select form-select-sm"
+                    value={formData.comuna}
                     onChange={handleChange}
-                  />
+                  >
+                    {REGIONES_Y_COMUNAS[formData.region]?.map((com) => (
+                      <option key={com} value={com}>
+                        {com}
+                      </option>
+                    ))}
+                  </select>
                 </div>
+              </div>
 
-                <div className="col-12 mt-4">
-                  <h4 className="fw-bold mb-3" style={{ color: 'var(--dark-color)' }}>
-                    2. Dirección de Entrega
-                  </h4>
-                </div>
-
+              <div className="row g-3 mb-3">
                 <div className="col-sm-8">
                   <label className="form-label small fw-semibold">Calle y Número *</label>
                   <input
                     type="text"
                     name="calle"
-                    className="form-control"
+                    placeholder="Av. Providencia 1234"
+                    className={`form-control form-control-sm ${errors.calle ? 'is-invalid' : ''}`}
                     value={formData.calle}
                     onChange={handleChange}
                   />
+                  {errors.calle && <div className="invalid-feedback">{errors.calle}</div>}
                 </div>
 
                 <div className="col-sm-4">
@@ -157,59 +238,39 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   <input
                     type="text"
                     name="depto"
-                    className="form-control"
+                    placeholder="Depto 302"
+                    className="form-control form-control-sm"
                     value={formData.depto}
                     onChange={handleChange}
                   />
                 </div>
-
-                <div className="col-sm-6">
-                  <label className="form-label small fw-semibold">Región</label>
-                  <select
-                    name="region"
-                    className="form-select"
-                    value={formData.region}
-                    onChange={handleChange}
-                  >
-                    <option value="Región Metropolitana de Santiago">
-                      Región Metropolitana de Santiago
-                    </option>
-                    <option value="Región de Valparaíso">Región de Valparaíso</option>
-                  </select>
-                </div>
-
-                <div className="col-sm-6">
-                  <label className="form-label small fw-semibold">Comuna</label>
-                  <select
-                    name="comuna"
-                    className="form-select"
-                    value={formData.comuna}
-                    onChange={handleChange}
-                  >
-                    <option value="Santiago">Santiago</option>
-                    <option value="Providencia">Providencia</option>
-                    <option value="Las Condes">Las Condes</option>
-                    <option value="San Bernardo">San Bernardo</option>
-                    <option value="Cerrillos">Cerrillos</option>
-                  </select>
-                </div>
-
-                <div className="col-12">
-                  <label className="form-label small fw-semibold">
-                    Indicaciones para la entrega (Opcional)
-                  </label>
-                  <textarea
-                    name="indicaciones"
-                    className="form-control"
-                    rows={2}
-                    value={formData.indicaciones}
-                    onChange={handleChange}
-                  ></textarea>
-                </div>
               </div>
 
-              <button type="submit" className="btn btn-custom w-100 py-3 mt-4 fs-5">
-                Pagar ahora ${total.toLocaleString('es-CL')}
+              <div className="mb-4">
+                <label className="form-label small fw-semibold">Indicaciones de Entrega (Opcional)</label>
+                <textarea
+                  name="indicaciones"
+                  rows={2}
+                  className="form-control form-control-sm"
+                  placeholder="Dejar en conserjería, llamar al timbre..."
+                  value={formData.indicaciones}
+                  onChange={handleChange}
+                ></textarea>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-custom w-100 py-2 fw-bold"
+                disabled={isProcessing}
+              >
+                {isProcessing ? (
+                  <>
+                    <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                    Procesando Pago Seguro...
+                  </>
+                ) : (
+                  `Pagar $${totalConDescuento.toLocaleString('es-CL')}`
+                )}
               </button>
             </form>
           </div>
@@ -217,38 +278,45 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
         <div className="col-lg-5">
           <div className="card shadow-sm border-0 p-4">
-            <h4 className="fw-bold mb-3" style={{ color: 'var(--dark-color)' }}>
-              Resumen del Pedido
-            </h4>
+            <h5 className="fw-bold mb-3">Detalle del Pedido</h5>
 
-            <ul className="list-group list-group-flush mb-3">
+            <div className="list-group list-group-flush mb-3">
               {cart.map((item) => (
-                <li
-                  key={item.id}
-                  className="list-group-item d-flex justify-content-between align-items-center px-0 py-3"
-                >
-                  <div className="d-flex align-items-center">
-                    <img
-                      src={item.imagen}
-                      alt={item.nombre}
-                      className="rounded me-3"
-                      style={{ width: '50px', height: '50px', objectFit: 'cover' }}
-                    />
-                    <div>
-                      <h6 className="my-0 fw-semibold">{item.nombre}</h6>
-                      <small className="text-muted">Cantidad: {item.cantidad}</small>
+                <div key={item.codigo} className="list-group-item d-flex justify-content-between align-items-center px-0 py-2">
+                  <div>
+                    <div className="small fw-semibold">{item.nombre}</div>
+                    <div className="text-muted" style={{ fontSize: '0.75rem' }}>
+                      {item.cantidad} x ${item.precio.toLocaleString('es-CL')}
                     </div>
                   </div>
-                  <span className="fw-bold text-price">
+                  <span className="small fw-bold text-price">
                     ${(item.precio * item.cantidad).toLocaleString('es-CL')}
                   </span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
 
-            <div className="d-flex justify-content-between fs-5 fw-bold pt-2 border-top">
-              <span>Total:</span>
-              <span className="text-price">${total.toLocaleString('es-CL')}</span>
+            <div className="d-flex justify-content-between mb-2 small">
+              <span className="text-muted">Subtotal:</span>
+              <span className="fw-bold">${subtotal.toLocaleString('es-CL')}</span>
+            </div>
+
+            {discountPercent > 0 && (
+              <div className="d-flex justify-content-between mb-2 small text-success">
+                <span>Descuento aplicado ({discountPercent}%):</span>
+                <span>-${discountAmount.toLocaleString('es-CL')}</span>
+              </div>
+            )}
+
+            <div className="d-flex justify-content-between my-3 pt-2 border-top">
+              <span className="fs-5 fw-bold">Total a Pagar:</span>
+              <span className="fs-5 fw-bold text-price">
+                ${totalConDescuento.toLocaleString('es-CL')}
+              </span>
+            </div>
+
+            <div className="alert alert-light border small text-muted mb-0">
+              <i className="bi bi-shield-check me-1 text-success"></i> Transacción cifrada y protegida por Webpay Plus.
             </div>
           </div>
         </div>

@@ -1,36 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&family=Pacifico&display=swap');
+
 :root {
-  --primary-color: #d1512d;
-  --secondary-color: #f5c7a9;
-  --dark-color: #411530;
-  --light-bg: #fff5e4;
+  --bg-crema: #FFF5E1;
+  --color-chocolate: #8B4513;
+  --color-rosa: #FFC0CB;
+  --color-rosa-hover: #ff9fb2;
+  --texto-oscuro: #5D4037;
+  --texto-secundario: #B0BEC5;
 }
 
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: var(--light-bg) !important;
+  font-family: 'Lato', sans-serif;
+  background-color: var(--bg-crema) !important;
+  color: var(--texto-oscuro);
 }
 
 .custom-bg {
-  background-color: var(--light-bg);
+  background-color: var(--bg-crema);
+}
+
+h1, h2, h3, .brand-font {
+  font-family: 'Pacifico', cursive;
+  color: var(--color-chocolate) !important;
 }
 
 .navbar-brand {
-  font-size: 1.5rem;
+  font-family: 'Pacifico', cursive;
+  font-size: 1.8rem;
   letter-spacing: 1px;
-  color: #ffffff !important;
+  color: var(--bg-crema) !important;
 }
 
 .nav-link-custom {
-  color: #e0e0e0 !important;
+  color: #f8f9fa !important;
+  font-weight: 400;
   text-decoration: none;
 }
 
 .nav-link-custom:hover {
-  color: #ffffff !important;
+  color: var(--color-rosa) !important;
 }
 
 .nav-link-custom.active {
-  color: var(--secondary-color) !important;
+  color: var(--color-rosa) !important;
   font-weight: 700;
 }
 
@@ -39,31 +51,47 @@ body {
   border-radius: 12px;
   overflow: hidden;
   background-color: #ffffff;
+  border: 1px solid rgba(139, 69, 19, 0.1) !important;
 }
 
 .card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(93, 64, 55, 0.15) !important;
 }
 
 .card-title {
-  font-weight: 600;
-  color: var(--dark-color) !important;
+  font-family: 'Lato', sans-serif;
+  font-weight: 700;
+  color: var(--texto-oscuro) !important;
 }
 
 .btn-custom {
-  background-color: var(--primary-color);
+  background-color: var(--color-chocolate);
   color: #ffffff;
   border: none;
   border-radius: 8px;
-  font-weight: 500;
+  font-weight: 700;
+  transition: background-color 0.2s ease;
 }
 
 .btn-custom:hover {
-  background-color: #b04020;
+  background-color: #6a340d;
   color: #ffffff;
 }
 
+.btn-rosa {
+  background-color: var(--color-rosa);
+  color: var(--texto-oscuro);
+  border: none;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+.btn-rosa:hover {
+  background-color: var(--color-rosa-hover);
+  color: var(--texto-oscuro);
+}
+
 .text-price {
-  color: var(--primary-color) !important;
+  color: var(--color-chocolate) !important;
 }

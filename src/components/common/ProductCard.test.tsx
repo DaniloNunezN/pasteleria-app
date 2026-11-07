@@ -5,31 +5,32 @@ import { ProductCard } from './ProductCard';
 import type { Product } from '../../data/productService';
 
 const mockProduct: Product = {
-  id: 1,
-  nombre: 'Torta Cuatro Leches',
-  categoria: 'Tortas Tradicionales',
-  precio: 18500,
-  descripcion: 'Bizcocho húmedo bañado en mezcla de cuatro leches.',
-  imagen: 'https://via.placeholder.com/150',
+  codigo: 'TC001',
+  nombre: 'Torta Cuadrada de Chocolate',
+  categoria: 'Tortas Cuadradas',
+  precio: 45000,
+  descripcion: 'Deliciosa torta artesanal con ganache',
+  imagen: 'https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=500',
   stock: 5,
+  stockCritico: 2,
 };
 
 describe('ProductCard Component', () => {
-  it('debe renderizar el nombre, categoria y precio formateado', () => {
-    const handleAddToCart = vi.fn();
-    render(<ProductCard product={mockProduct} onAddToCart={handleAddToCart} />);
+  it('renderiza correctamente el codigo, nombre, precio y categoria del pastel', () => {
+    render(<ProductCard product={mockProduct} onAddToCart={vi.fn()} />);
 
-    expect(screen.getByText('Torta Cuatro Leches')).toBeInTheDocument();
-    expect(screen.getByText('Tortas Tradicionales')).toBeInTheDocument();
-    expect(screen.getByText('$18.500')).toBeInTheDocument();
+    expect(screen.getByText('TC001')).toBeInTheDocument();
+    expect(screen.getByText('Torta Cuadrada de Chocolate')).toBeInTheDocument();
+    expect(screen.getByText('Tortas Cuadradas')).toBeInTheDocument();
+    expect(screen.getByText('$45.000')).toBeInTheDocument();
   });
 
-  it('debe llamar a la funcion onAddToCart al hacer clic en el boton', () => {
+  it('llama a la funcion onAddToCart al presionar el boton Añadir', () => {
     const handleAddToCart = vi.fn();
     render(<ProductCard product={mockProduct} onAddToCart={handleAddToCart} />);
 
-    const button = screen.getByRole('button', { name: /añadir al carrito/i });
-    fireEvent.click(button);
+    const addButton = screen.getByRole('button', { name: /añadir/i });
+    fireEvent.click(addButton);
 
     expect(handleAddToCart).toHaveBeenCalledTimes(1);
     expect(handleAddToCart).toHaveBeenCalledWith(mockProduct);
