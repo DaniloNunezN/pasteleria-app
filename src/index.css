@@ -1,0 +1,69 @@
+:root {
+  --primary-color: #d1512d;
+  --secondary-color: #f5c7a9;
+  --dark-color: #411530;
+  --light-bg: #fff5e4;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background-color: var(--light-bg) !important;
+}
+
+.custom-bg {
+  background-color: var(--light-bg);
+}
+
+.navbar-brand {
+  font-size: 1.5rem;
+  letter-spacing: 1px;
+  color: #ffffff !important;
+}
+
+.nav-link-custom {
+  color: #e0e0e0 !important;
+  text-decoration: none;
+}
+
+.nav-link-custom:hover {
+  color: #ffffff !important;
+}
+
+.nav-link-custom.active {
+  color: var(--secondary-color) !important;
+  font-weight: 700;
+}
+
+.card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: 12px;
+  overflow: hidden;
+  background-color: #ffffff;
+}
+
+.card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15) !important;
+}
+
+.card-title {
+  font-weight: 600;
+  color: var(--dark-color) !important;
+}
+
+.btn-custom {
+  background-color: var(--primary-color);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 500;
+}
+
+.btn-custom:hover {
+  background-color: #b04020;
+  color: #ffffff;
+}
+
+.text-price {
+  color: var(--primary-color) !important;
+}
