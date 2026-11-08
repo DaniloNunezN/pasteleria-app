@@ -221,4 +221,8 @@ export const productService = {
   resetDefaults: (): void => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_PRODUCTS));
   },
+
+  resetToDefault: (): void => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_PRODUCTS));
+  },
 };

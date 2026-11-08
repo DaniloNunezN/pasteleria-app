@@ -15,7 +15,7 @@ export const AboutView: React.FC = () => {
       title: 'El Equipo Pastelero',
     },
     {
-      src: 'https://images.unsplash.com/photo-1535141192574-5d4897c13136?auto=format&fit=crop&w=800&q=80',
+      src: "/record_1995.jpg",
       caption: 'Inolvidable hito de 1995: el día en que elaboramos la torta más grande de la región y entramos al libro de Récord Guinness.',
       title: 'El Día del Récord Guinness (1995)',
     },

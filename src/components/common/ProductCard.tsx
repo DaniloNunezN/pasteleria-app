@@ -4,84 +4,82 @@ import type { Product } from '../../data/productService';
 interface ProductCardProps {
   product: Product;
   onAddToCart: (product: Product) => void;
-  onViewDetail?: (product: Product) => void;
+  onSelectProduct?: (product: Product) => void;
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onAddToCart,
-  onViewDetail,
+  onSelectProduct,
 }) => {
-  const isOutOfStock = product.stock <= 0;
-  const isCriticalStock =
-    product.stockCritico !== undefined &&
-    product.stock > 0 &&
-    product.stock <= product.stockCritico;
-
   return (
-    <div className="card h-100 shadow-sm border-0 d-flex flex-column">
-      <div className="position-relative">
-        <img
-          src={product.imagen}
-          alt={product.nombre}
-          className="card-img-top"
-          style={{ height: '220px', objectFit: 'cover' }}
-        />
-        <span
-          className="badge position-absolute top-0 start-0 m-2 px-2 py-1 text-white"
-          style={{ backgroundColor: 'var(--color-chocolate)', fontSize: '0.75rem' }}
+    <article className="producto-card h-100 d-flex flex-column justify-content-between">
+      <div>
+        <div
+          className="producto-imagen"
+          style={{ cursor: onSelectProduct ? 'pointer' : 'default' }}
+          onClick={() => onSelectProduct && onSelectProduct(product)}
         >
-          {product.codigo}
-        </span>
-        {isCriticalStock && (
-          <span className="badge bg-warning text-dark position-absolute top-0 end-0 m-2">
-            ¡Últimas unidades!
-          </span>
-        )}
+          <img
+            src={product.imagen}
+            alt={product.nombre}
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src =
+                'https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80';
+            }}
+          />
+        </div>
+        <div className="producto-info text-center mt-2">
+          <div className="d-flex justify-content-center align-items-center gap-2 mb-1">
+            <span className="badge bg-light text-secondary border" style={{ fontSize: '0.7rem' }}>
+              {product.codigo}
+            </span>
+            <span className="producto-categoria mb-0">{product.categoria}</span>
+          </div>
+          <h3
+            className="h6 fw-bold my-2"
+            style={{ cursor: onSelectProduct ? 'pointer' : 'default' }}
+            onClick={() => onSelectProduct && onSelectProduct(product)}
+          >
+            {product.nombre}
+          </h3>
+          <p className="producto-precio mb-2">
+            ${product.precio.toLocaleString('es-CL')}
+          </p>
+        </div>
       </div>
 
-      <div className="card-body d-flex flex-column p-3">
-        <span
-          className="badge align-self-start mb-2"
-          style={{ backgroundColor: 'var(--color-rosa)', color: 'var(--texto-oscuro)' }}
-        >
-          {product.categoria}
-        </span>
-        <h5 className="card-title fs-6 fw-bold mb-1">{product.nombre}</h5>
-        <p className="card-text text-muted small flex-grow-1 mb-3">
-          {product.descripcion}
-        </p>
-
-        <div className="d-flex justify-content-between align-items-center mb-3">
-          <span className="fs-5 fw-bold text-price">
-            ${product.precio.toLocaleString('es-CL')}
-          </span>
-          <span className={`badge ${isOutOfStock ? 'bg-danger' : 'bg-success'}`}>
-            {isOutOfStock ? 'Sin stock' : `${product.stock} disp.`}
-          </span>
-        </div>
-
-        <div className="d-flex gap-2">
-          {onViewDetail && (
-            <button
-              type="button"
-              className="btn btn-sm btn-outline-secondary flex-grow-1"
-              onClick={() => onViewDetail(product)}
-            >
-              Detalle
-            </button>
-          )}
+      <div className="producto-acciones mt-3">
+        {onSelectProduct && (
           <button
             type="button"
-            className="btn btn-custom btn-sm flex-grow-1"
-            onClick={() => onAddToCart(product)}
-            disabled={isOutOfStock}
+            className="btn-detalle"
+            onClick={() => onSelectProduct(product)}
           >
-            <i className="bi bi-cart-plus me-1"></i>
-            {isOutOfStock ? 'Agotado' : 'Añadir'}
+            Ver detalle
           </button>
-        </div>
+        )}
+        <button
+          type="button"
+          className="btn-carrito d-inline-flex align-items-center justify-content-center gap-1"
+          onClick={() => onAddToCart(product)}
+        >
+          <svg
+            width="15"
+            height="15"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          Añadir
+        </button>
       </div>
-    </div>
+    </article>
   );
 };

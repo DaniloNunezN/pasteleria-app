@@ -12,52 +12,81 @@ export const PaymentSuccessView: React.FC<PaymentSuccessViewProps> = ({
 }) => {
   if (!orderData) {
     return (
-      <div className="card shadow-sm border-0 p-5 text-center my-4">
-        <h3 className="fw-bold mb-3">No hay orden reciente</h3>
-        <button className="btn btn-custom px-4 py-2" onClick={onGoHome}>
-          Volver a la Tienda
-        </button>
+      <div className="my-5 text-center p-5 card border-0 shadow-sm bg-white" style={{ border: '1px solid var(--color-rosa)' }}>
+        <h3 className="fw-bold mb-2" style={{ color: 'var(--color-chocolate)' }}>No se encontró información del pedido</h3>
+        <p className="text-muted mb-4">Parece que accediste a esta pantalla sin completar una transacción.</p>
+        <div>
+          <button className="btn-principal" onClick={onGoHome}>
+            Volver al Inicio
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="card shadow-sm border-0 p-4 p-md-5 my-4 text-center mx-auto" style={{ maxWidth: '650px' }}>
-      <div className="mb-3">
-        <i className="bi bi-check-circle-fill text-success" style={{ fontSize: '4rem' }}></i>
-      </div>
-      <h2 className="fw-bold text-success mb-2">¡Pago Confirmado con Éxito!</h2>
-      <p className="text-muted mb-4">
-        Gracias por tu compra en Pastelería Mil Sabores. Tu pedido está en preparación.
-      </p>
+    <div className="my-5 d-flex justify-content-center">
+      <div className="card p-4 p-md-5 border-0 shadow-sm bg-white text-center" style={{ maxWidth: '650px', width: '100%', border: '1px solid var(--color-rosa)' }}>
+        <div className="mb-3 text-success d-flex justify-content-center">
+          <div className="rounded-circle p-3 d-flex align-items-center justify-content-center" style={{ backgroundColor: '#e8f5e9', width: '72px', height: '72px' }}>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+              <polyline points="22 4 12 14.01 9 11.01"></polyline>
+            </svg>
+          </div>
+        </div>
 
-      <div className="card bg-light border-0 p-3 mb-4 text-start">
-        <div className="d-flex justify-content-between mb-2">
-          <span className="text-muted small">Número de Orden:</span>
-          <span className="fw-bold">#{orderData.orderNumber}</span>
+        <h2 className="fw-bold mb-2" style={{ color: 'var(--color-chocolate)', fontFamily: 'Pacifico, cursive' }}>
+          ¡Pago Realizado con Éxito!
+        </h2>
+        <p className="text-muted mb-4">
+          Muchas gracias por tu compra. Tu pedido ha sido confirmado y ya comenzó su preparación en nuestra pastelería.
+        </p>
+
+        <div className="bg-light p-3 rounded-3 text-start small mb-4 border">
+          <div className="d-flex justify-content-between mb-2 pb-2 border-bottom">
+            <span className="text-muted">Número de Pedido:</span>
+            <span className="fw-bold text-dark">{orderData.orderNumber}</span>
+          </div>
+          <div className="d-flex justify-content-between mb-2 pb-2 border-bottom">
+            <span className="text-muted">Cliente:</span>
+            <span className="fw-bold text-dark">{orderData.cliente}</span>
+          </div>
+          <div className="d-flex justify-content-between mb-2 pb-2 border-bottom">
+            <span className="text-muted">Correo:</span>
+            <span className="fw-bold text-dark">{orderData.correo}</span>
+          </div>
+          <div className="d-flex justify-content-between mb-2 pb-2 border-bottom">
+            <span className="text-muted">Dirección de Entrega:</span>
+            <span className="fw-bold text-dark">{orderData.direccion}, {orderData.comuna}</span>
+          </div>
+          <div className="d-flex justify-content-between mb-2 pb-2 border-bottom">
+            <span className="text-muted">Método de Pago:</span>
+            <span className="fw-bold text-dark">{orderData.metodoPago}</span>
+          </div>
+          <div className="d-flex justify-content-between pt-1 fs-6">
+            <span className="fw-bold" style={{ color: 'var(--color-chocolate)' }}>Total Cancelado:</span>
+            <span className="fw-bold text-success">${orderData.total.toLocaleString('es-CL')} CLP</span>
+          </div>
         </div>
-        <div className="d-flex justify-content-between mb-2">
-          <span className="text-muted small">Cliente:</span>
-          <span className="fw-bold">{orderData.nombre} {orderData.apellidos}</span>
-        </div>
-        <div className="d-flex justify-content-between mb-2">
-          <span className="text-muted small">Correo de confirmación:</span>
-          <span className="fw-bold">{orderData.correo}</span>
-        </div>
-        <div className="d-flex justify-content-between mb-2">
-          <span className="text-muted small">Dirección de entrega:</span>
-          <span className="fw-bold">{orderData.calle}, {orderData.comuna}</span>
-        </div>
-        <hr className="my-2" />
-        <div className="d-flex justify-content-between">
-          <span className="fw-bold">Total Pagado:</span>
-          <span className="fw-bold text-price fs-5">${orderData.total.toLocaleString('es-CL')}</span>
+
+        <div className="d-flex justify-content-center gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm px-3"
+            onClick={() => window.print()}
+          >
+            Imprimir Comprobante
+          </button>
+          <button
+            type="button"
+            className="btn btn-custom btn-sm px-4"
+            onClick={onGoHome}
+          >
+            Volver al Inicio
+          </button>
         </div>
       </div>
-
-      <button className="btn btn-custom px-4 py-2" onClick={onGoHome}>
-        <i className="bi bi-house-door me-1"></i> Volver a la Tienda
-      </button>
     </div>
   );
 };
